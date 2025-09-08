@@ -62,7 +62,7 @@ def index():
     if request.method == 'POST':
         # 웹 양식에서 사용자가 입력한 사업자 번호와 서비스 키를 가져옵니다.
         # strip()으로 앞뒤 공백을 제거하고, 빈 줄은 제외합니다.
-        b_numbers_input = [line.strip() for line in request.form['business_numbers'].splitlines() if line.strip()]
+        b_numbers_input = [line.strip().replace('-', '') for line in request.form['business_numbers'].splitlines() if line.strip()]
 
         # 🚨 보안을 위해 서비스 키는 환경 변수에서 가져오는 것이 가장 좋습니다.
         # PythonAnywhere 설정에서 이 변수를 추가할 것입니다.
