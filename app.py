@@ -6,50 +6,59 @@ from flask import Flask, render_template, request
 # --- Flask 앱 생성 ---
 app = Flask(__name__)
 
+# --- 상태 코드별 안내 문구 (새로 추가) ---
+STATUS_CODE_MESSAGES = {
+    400: "잘못된 요청 형식입니다. (API 서버가 이해할 수 없는 요청)",
+    404: "API 서비스를 찾을 수 없습니다. (경로 확인 필요)",
+    411: "필수 요청 파라미터가 누락되었습니다.",
+    413: "요청 가능한 사업자번호 개수(100개)를 초과했습니다.",
+    500: "국세청 API 서버에 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+}
 
-# --- 기존 제공된 함수 (수정 없이 거의 그대로 사용) ---
+
+# --- check_business_registration 함수 (수정) ---
 def check_business_registration(business_numbers: list, service_key: str):
     """
-    국세청 사업자등록정보 상태조회 API를 호출합니다.
+    국세청 사업자등록정보 상태조회 API를 호출하고, 상태 코드에 따라 적절한 오류 메시지를 반환합니다.
     """
     api_url = f"https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey={service_key}"
     payload = {"b_no": business_numbers}
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
     try:
-        # PythonAnywhere는 외부 요청 시 verify=True가 기본이며 잘 동작합니다.
-        # verify=False 옵션은 보안상 좋지 않으므로 제거합니다.
         response = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=10)
 
         if response.status_code == 200:
             return response.json()
         else:
-            # 오류 발생 시 사용자에게 보여줄 정보를 포함하여 반환
-            return {"error": f"API 호출 오류: {response.status_code}", "details": response.text}
+            # 딕셔너리에서 상태 코드에 맞는 안내 문구를 찾고, 없으면 기본 메시지를 사용합니다.
+            error_message = STATUS_CODE_MESSAGES.get(
+                response.status_code,
+                f"알 수 없는 오류가 발생했습니다. (상태 코드: {response.status_code})"
+            )
+            return {"error": error_message}
 
     except requests.exceptions.RequestException as e:
-        return {"error": "네트워크 오류 발생", "details": str(e)}
+        return {"error": "네트워크 오류가 발생하여 국세청 API 서버에 접속할 수 없습니다."}
 
 
-# --- 기존 함수를 웹에 맞게 살짝 수정한 함수 ---
+# --- find_business_statuses 함수 (수정) ---
 def find_business_statuses(business_numbers: list, service_key: str) -> dict:
     """
     사업자 번호 리스트를 조회하여 '모든' 사업자의 상태 정보를 반환합니다.
-    (웹에서는 휴/폐업뿐만 아니라 정상 사업자 정보도 보여주는 것이 더 유용합니다.)
     """
     api_response = check_business_registration(business_numbers, service_key)
 
-    # 결과를 저장할 딕셔너리
     results = {
         "data": [],
         "error": None,
-        "raw_response": api_response  # 디버깅을 위해 원본 응답 저장
     }
 
     if api_response and api_response.get("data"):
         results["data"] = api_response["data"]
     elif api_response and api_response.get("error"):
-        results["error"] = f"{api_response['error']} - {api_response['details']}"
+        # check_business_registration에서 반환된 친절한 오류 메시지를 그대로 사용합니다.
+        results["error"] = api_response["error"]
     else:
         results["error"] = "API로부터 유효한 데이터를 받지 못했습니다."
 
