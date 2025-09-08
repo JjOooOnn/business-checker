@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>조회 결과</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .closed { background-color: #ffdddd; } /* 휴/폐업 강조 */
+        .error { color: red; font-weight: bold; }
+        a { text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>조회 결과</h1>
+
+    {% if error %}
+        <p class="error">오류가 발생했습니다: {{ error }}</p>
+    {% endif %}
+
+    {% if results %}
+        <p>총 <strong>{{ results|length }}</strong>건의 결과가 조회되었습니다.</p>
+        <table>
+            <tr>
+                <th>사업자등록번호 (b_no)</th>
+                <th>납세자상태 (b_stt)</th>
+                <th>상태코드 (b_stt_cd)</th>
+            </tr>
+            {% for business in results %}
+                <tr {% if business.b_stt_cd in ['02', '03'] %}class="closed"{% endif %}>
+                    <td>{{ business.b_no }}</td>
+                    <td>{{ business.b_stt }}</td>
+                    <td>{{ business.b_stt_cd }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        {% if not error %}
+        <p>조회된 결과가 없습니다.</p>
+        {% endif %}
+    {% endif %}
+
+    <hr>
+    <a href="/"><button>다시 조회하기</button>a>
+</body>
+</html>
