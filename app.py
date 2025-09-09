@@ -38,8 +38,11 @@ def check_business_registration(business_numbers: list, service_key: str):
             )
             return {"error": error_message}
 
-    except requests.exceptions.RequestException as e:
-        return {"error": "네트워크 오류가 발생하여 국세청 API 서버에 접속할 수 없습니다."}
+except requests.exceptions.RequestException as e:
+# 더 자세한 오류 확인을 위해 실제 오류 내용을 포함시킵니다.
+    detailed_error = str(e)
+    print(f"!!! Detailed Network Error: {detailed_error}")  # Render 로그에 상세 오류 출력
+    return {"error": f"네트워크 오류 발생 (상세 정보): {detailed_error}"}
 
 
 # --- find_business_statuses 함수 (수정) ---
