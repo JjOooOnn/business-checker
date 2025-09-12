@@ -33,7 +33,10 @@
         </div>
 
         <div id="excel-form">
-            <div class="info">사업자등록번호가 첫 번째 열에 입력된 엑셀(.xlsx) 파일을 업로드하세요.</div>
+            <div class="info">
+                사업자등록번호가 첫 번째 열에 입력된 엑셀(.xlsx) 파일을 업로드하세요.<br>
+        <b>첫 번째 행(1행)은 제목 줄이므로 비워두거나 '사업자번호' 등의 제목을 입력해주세요.</b>
+            </div>
             <form action="/upload-excel" method="post" enctype="multipart/form-data">
                 <input type="file" name="excel_file" accept=".xlsx" required><br>
                 <input type="submit" value="조회 및 다운로드">
