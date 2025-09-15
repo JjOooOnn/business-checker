@@ -70,7 +70,7 @@ def lookup_direct():
         return render_template('results.html', error="서버에 서비스 키가 설정되지 않았습니다.")
 
     b_numbers_raw = request.form.get('business_numbers', '').splitlines()
-    b_numbers = [num.strip().replace('-', '') for num in b_numbers_raw if num.strip()]
+    b_numbers = [num.strip().replace('-', '').replace(' ', '') for num in b_numbers_raw if num.strip()]
 
     if not b_numbers:
         return render_template('results.html', error="조회할 사업자 번호를 입력해주세요.")
@@ -106,7 +106,7 @@ def upload_excel():
             return redirect(url_for('index'))
 
         b_numbers_raw = df.iloc[:, 0].dropna().astype(str)
-        b_numbers = [num.replace('-', '').strip() for num in b_numbers_raw if num.strip()]
+        b_numbers = [num.strip().replace('-', '').replace(' ', '') for num in b_numbers_raw if num.strip()]
 
         if not b_numbers:
             flash("엑셀 파일의 첫 번째 열에서 유효한 사업자등록번호를 찾을 수 없습니다.")
