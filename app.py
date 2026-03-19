@@ -54,117 +54,183 @@ def process_api_calls(business_numbers: list, service_key: str):
     return all_results, None  # 결과 반환, 에러 없음
 
 
-# --- [신규 기능] 매체(방송/정기간행물) 다중 키워드 검색 로직 ---
-def search_media_apis(keyword_input, service_key):
-    results = []
-    headers = {"Accept": "application/json"}
+# # --- [신규 기능] 매체(방송/정기간행물) 다중 키워드 검색 로직 ---
+# def search_media_apis(keyword_input, service_key):
+#     results = []
+#     headers = {"Accept": "application/json"}
+#
+#     # 쉼표나 공백으로 구분된 여러 키워드를 리스트로 쪼개기
+#     keywords = [k.strip() for k in keyword_input.replace(',', ' ').split() if k.strip()]
+#     if not keywords:
+#         return results
+#
+#     # 1. 방송통신위원회_방송사업자 허가 현황 API
+#     base_brd_url = "https://api.odcloud.kr/api/3068655/v1/uddi:32ac4a9c-9cdd-4bb9-b273-ce1d95de235a"
+#     brd_page = 1
+#     brd_per_page = 1000
+#     seen_brd = set()
+#
+#     while True:
+#         brd_url = f"{base_brd_url}?page={brd_page}&perPage={brd_per_page}&serviceKey={service_key}"
+#         try:
+#             brd_res = requests.get(brd_url, headers=headers, verify=False, timeout=15)
+#             if brd_res.status_code == 200:
+#                 res_json = brd_res.json()
+#                 data = res_json.get("data", [])
+#                 current_count = res_json.get("currentCount", 0)
+#
+#                 if not data or current_count == 0:
+#                     break
+#
+#                 for item in data:
+#                     brd_name = item.get('방송사명', '')
+#                     station_name = item.get('방송국명', '')
+#
+#                     # 여러 키워드 중 하나라도 포함되어 있는지 확인 (OR 검색)
+#                     if any(k in str(brd_name) or k in str(station_name) for k in keywords):
+#                         unique_key = f"{brd_name}_{station_name}"
+#                         if unique_key not in seen_brd:
+#                             seen_brd.add(unique_key)
+#
+#                             display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (
+#                                         brd_name or station_name or '-')
+#                             brd_type = item.get('유형', '')
+#                             category_text = f"방송사업자({brd_type})" if brd_type else "방송사업자"
+#
+#                             results.append({
+#                                 "category": category_text,
+#                                 "name": display_name,
+#                                 "owner": "-",
+#                                 "status": "허가"
+#                             })
+#
+#                 if current_count < brd_per_page:
+#                     break
+#
+#                 brd_page += 1
+#
+#             else:
+#                 print(f"방송 API 호출 실패: 상태코드 {brd_res.status_code}")
+#                 break
+#         except Exception as e:
+#             print(f"방송사업자 API 에러 (page {brd_page}): {e}")
+#             break
+#
+#     # 2. 문화체육관광부_정기간행물 등록 현황 API
+#     base_pub_url = "https://api.odcloud.kr/api/15070478/v1/uddi:b355cbd7-1239-44cb-a439-86e080c043a8"
+#     pub_page = 1
+#     pub_per_page = 1000
+#     seen_pub = set()
+#
+#     while pub_page <= 60:
+#         pub_url = f"{base_pub_url}?page={pub_page}&perPage={pub_per_page}&serviceKey={service_key}"
+#         try:
+#             pub_res = requests.get(pub_url, headers=headers, verify=False, timeout=15)
+#             if pub_res.status_code == 200:
+#                 res_json = pub_res.json()
+#                 data = res_json.get("data", [])
+#                 current_count = res_json.get("currentCount", 0)
+#
+#                 if not data or current_count == 0:
+#                     break
+#
+#                 for item in data:
+#                     # 여러 키워드 중 하나라도 포함되어 있는지 확인 (OR 검색)
+#                     if any(k in str(item.get('제호', '')) or k in str(item.get('발행소명', '')) for k in keywords):
+#
+#                         unique_key = str(item.get('등록번호', '')) + str(item.get('제호', ''))
+#                         if unique_key not in seen_pub:
+#                             seen_pub.add(unique_key)
+#
+#                             jong_byeol = item.get('종별', '')
+#                             category_text = f"정기간행물({jong_byeol})" if jong_byeol else "정기간행물"
+#
+#                             results.append({
+#                                 "category": category_text,
+#                                 "name": item.get('제호', '-'),
+#                                 "owner": item.get('발행소명', '-'),
+#                                 "status": item.get('상태', '-')
+#                             })
+#
+#                 if current_count < pub_per_page:
+#                     break
+#
+#                 pub_page += 1
+#             else:
+#                 print(f"정기간행물 API 호출 실패: 상태코드 {pub_res.status_code}")
+#                 break
+#         except Exception as e:
+#             print(f"정기간행물 API 에러 (page {pub_page}): {e}")
+#             break
+#
+#     return results
 
+# --- [신규 기능] 매체(방송/정기간행물) 다중 키워드 검색 로직 (CSV 파일 버전) ---
+def search_media_csv(keyword_input):
+    results = []
     # 쉼표나 공백으로 구분된 여러 키워드를 리스트로 쪼개기
     keywords = [k.strip() for k in keyword_input.replace(',', ' ').split() if k.strip()]
     if not keywords:
         return results
 
-    # 1. 방송통신위원회_방송사업자 허가 현황 API
-    base_brd_url = "https://api.odcloud.kr/api/3068655/v1/uddi:32ac4a9c-9cdd-4bb9-b273-ce1d95de235a"
-    brd_page = 1
-    brd_per_page = 1000
-    seen_brd = set()
-
-    while True:
-        brd_url = f"{base_brd_url}?page={brd_page}&perPage={brd_per_page}&serviceKey={service_key}"
+    # 1. 방송사업자 CSV 검색
+    brd_file = 'broadcasting_20250811.csv'
+    if os.path.exists(brd_file):
         try:
-            brd_res = requests.get(brd_url, headers=headers, verify=False, timeout=15)
-            if brd_res.status_code == 200:
-                res_json = brd_res.json()
-                data = res_json.get("data", [])
-                current_count = res_json.get("currentCount", 0)
+            # 공공데이터포털 CSV는 주로 cp949 인코딩을 사용합니다.
+            df_brd = pd.read_csv(brd_file, encoding='utf-8')
+        except UnicodeDecodeError:
+            df_brd = pd.read_csv(brd_file, encoding='cp949')
 
-                if not data or current_count == 0:
-                    break
+        df_brd = df_brd.fillna('')  # 빈칸(NaN) 처리
 
-                for item in data:
-                    brd_name = item.get('방송사명', '')
-                    station_name = item.get('방송국명', '')
+        for _, row in df_brd.iterrows():
+            brd_name = str(row.get('방송사명', ''))
+            station_name = str(row.get('방송국명', ''))
 
-                    # 여러 키워드 중 하나라도 포함되어 있는지 확인 (OR 검색)
-                    if any(k in str(brd_name) or k in str(station_name) for k in keywords):
-                        unique_key = f"{brd_name}_{station_name}"
-                        if unique_key not in seen_brd:
-                            seen_brd.add(unique_key)
+            if any(k in brd_name or k in station_name for k in keywords):
+                display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (
+                            brd_name or station_name or '-')
+                brd_type = str(row.get('유형', ''))
+                category_text = f"방송사업자({brd_type})" if brd_type else "방송사업자"
 
-                            display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (
-                                        brd_name or station_name or '-')
-                            brd_type = item.get('유형', '')
-                            category_text = f"방송사업자({brd_type})" if brd_type else "방송사업자"
+                results.append({
+                    "category": category_text,
+                    "name": display_name,
+                    "owner": "-",
+                    "status": "허가"
+                })
+    else:
+        print(f"서버에 파일이 없습니다: {brd_file}")
 
-                            results.append({
-                                "category": category_text,
-                                "name": display_name,
-                                "owner": "-",
-                                "status": "허가"
-                            })
-
-                if current_count < brd_per_page:
-                    break
-
-                brd_page += 1
-
-            else:
-                print(f"방송 API 호출 실패: 상태코드 {brd_res.status_code}")
-                break
-        except Exception as e:
-            print(f"방송사업자 API 에러 (page {brd_page}): {e}")
-            break
-
-    # 2. 문화체육관광부_정기간행물 등록 현황 API
-    base_pub_url = "https://api.odcloud.kr/api/15070478/v1/uddi:b355cbd7-1239-44cb-a439-86e080c043a8"
-    pub_page = 1
-    pub_per_page = 1000
-    seen_pub = set()
-
-    while pub_page <= 60:
-        pub_url = f"{base_pub_url}?page={pub_page}&perPage={pub_per_page}&serviceKey={service_key}"
+    # 2. 정기간행물 CSV 검색
+    pub_file = 'periodicals_20251104.csv'
+    if os.path.exists(pub_file):
         try:
-            pub_res = requests.get(pub_url, headers=headers, verify=False, timeout=15)
-            if pub_res.status_code == 200:
-                res_json = pub_res.json()
-                data = res_json.get("data", [])
-                current_count = res_json.get("currentCount", 0)
+            df_pub = pd.read_csv(pub_file, encoding='utf-8')
+        except UnicodeDecodeError:
+            df_pub = pd.read_csv(pub_file, encoding='cp949')
 
-                if not data or current_count == 0:
-                    break
+        df_pub = df_pub.fillna('')
 
-                for item in data:
-                    # 여러 키워드 중 하나라도 포함되어 있는지 확인 (OR 검색)
-                    if any(k in str(item.get('제호', '')) or k in str(item.get('발행소명', '')) for k in keywords):
+        for _, row in df_pub.iterrows():
+            title = str(row.get('제호', ''))
+            publisher = str(row.get('발행소명', ''))
 
-                        unique_key = str(item.get('등록번호', '')) + str(item.get('제호', ''))
-                        if unique_key not in seen_pub:
-                            seen_pub.add(unique_key)
+            if any(k in title or k in publisher for k in keywords):
+                jong_byeol = str(row.get('종별', ''))
+                category_text = f"정기간행물({jong_byeol})" if jong_byeol else "정기간행물"
 
-                            jong_byeol = item.get('종별', '')
-                            category_text = f"정기간행물({jong_byeol})" if jong_byeol else "정기간행물"
-
-                            results.append({
-                                "category": category_text,
-                                "name": item.get('제호', '-'),
-                                "owner": item.get('발행소명', '-'),
-                                "status": item.get('상태', '-')
-                            })
-
-                if current_count < pub_per_page:
-                    break
-
-                pub_page += 1
-            else:
-                print(f"정기간행물 API 호출 실패: 상태코드 {pub_res.status_code}")
-                break
-        except Exception as e:
-            print(f"정기간행물 API 에러 (page {pub_page}): {e}")
-            break
+                results.append({
+                    "category": category_text,
+                    "name": title or '-',
+                    "owner": publisher or '-',
+                    "status": str(row.get('상태', '-'))
+                })
+    else:
+        print(f"서버에 파일이 없습니다: {pub_file}")
 
     return results
-
 
 # --- 라우팅 로직 (대규모 수정) ---
 
@@ -251,18 +317,31 @@ def upload_excel():
         return redirect(url_for('index'))
 
 
-# --- [신규 기능] 라우팅 ---
+# # --- [신규 기능] 라우팅 ---
+# @app.route('/search-media', methods=['POST'])
+# def search_media():
+#     my_service_key = os.environ.get("NTS_SERVICE_KEY")
+#     if not my_service_key:
+#         return render_template('media_results.html', error="서버에 서비스 키가 설정되지 않았습니다.")
+#
+#     keyword = request.form.get('keyword', '').strip()
+#     if not keyword:
+#         return render_template('media_results.html', error="검색어를 입력해주세요.")
+#
+#     results = search_media_apis(keyword, my_service_key)
+#
+#     return render_template('media_results.html', keyword=keyword, results=results)
+
+# --- 라우팅 ---
 @app.route('/search-media', methods=['POST'])
 def search_media():
-    my_service_key = os.environ.get("NTS_SERVICE_KEY")
-    if not my_service_key:
-        return render_template('media_results.html', error="서버에 서비스 키가 설정되지 않았습니다.")
-
+    # CSV 버전을 사용하므로 이제 국세청 API 키(service_key)가 없어도 이 기능은 작동합니다.
     keyword = request.form.get('keyword', '').strip()
     if not keyword:
         return render_template('media_results.html', error="검색어를 입력해주세요.")
 
-    results = search_media_apis(keyword, my_service_key)
+    # API 대신 판다스로 CSV 검색 함수 실행
+    results = search_media_csv(keyword)
 
     return render_template('media_results.html', keyword=keyword, results=results)
 
