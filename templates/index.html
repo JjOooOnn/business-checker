@@ -2,74 +2,159 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>국세청 사업자 및 매체 현황 조회</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 조회 서비스</title>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        .tab-buttons button { padding: 10px 15px; cursor: pointer; border: 1px solid #ccc; background-color: #f0f0f0; margin-right: 5px; }
-        .tab-buttons button.active { background-color: #fff; border-bottom: 1px solid #fff; font-weight: bold; }
-        .tab-content { border: 1px solid #ccc; padding: 20px; border-top: none; }
-        .error { color: red; font-weight: bold; margin-top: 15px; }
-        .info { background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-size: 0.9em;}
-        #excel-form, #media-form { display: none; } /* 기본 숨김 */
-        textarea { width: 95%; height: 150px; }
-        input[type="submit"] { padding: 10px 20px; cursor: pointer; margin-top: 10px; }
-        input[type="text"] { width: 95%; padding: 10px; }
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0; padding: 50px 20px;
+            display: flex; justify-content: center;
+        }
+        .container {
+            background: var(--card-bg);
+            width: 100%; max-width: 650px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+        .header {
+            padding: 30px; text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); font-weight: 700; }
+
+        /* 탭 디자인 */
+        .tab-buttons {
+            display: flex; background-color: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tab-buttons button {
+            flex: 1; padding: 16px 10px;
+            border: none; background: none;
+            font-size: 1rem; font-weight: 500;
+            color: var(--text-muted); cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-buttons button:hover { color: var(--primary-color); background-color: #f1f5f9; }
+        .tab-buttons button.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            background-color: var(--card-bg);
+            font-weight: 700;
+        }
+
+        /* 폼 디자인 */
+        .tab-content { padding: 30px; }
+        .form-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .info {
+            background-color: #eff6ff; color: #1e40af;
+            border-left: 4px solid #3b82f6; padding: 15px;
+            border-radius: 6px; margin-bottom: 25px; font-size: 0.95em; line-height: 1.5;
+        }
+        textarea, input[type="text"], input[type="file"] {
+            width: 100%; box-sizing: border-box;
+            padding: 14px; border: 1px solid var(--border-color);
+            border-radius: 8px; font-size: 1rem; margin-bottom: 20px;
+            font-family: inherit; transition: border-color 0.2s;
+        }
+        textarea { height: 160px; resize: vertical; }
+        textarea:focus, input[type="text"]:focus {
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        input[type="submit"] {
+            width: 100%; padding: 16px;
+            background-color: var(--primary-color); color: white;
+            border: none; border-radius: 8px; font-size: 1.05rem; font-weight: bold;
+            cursor: pointer; transition: background-color 0.2s;
+        }
+        input[type="submit"]:hover { background-color: var(--primary-hover); }
+        .error { color: #dc2626; font-weight: bold; margin-top: 15px; background: #fef2f2; padding: 12px; border-radius: 6px; border: 1px solid #fecaca; text-align: center; }
     </style>
 </head>
 <body>
-    <h1>통합 조회 서비스</h1>
+    <div class="container">
+        <div class="header">
+            <h1>통합 조회 서비스</h1>
+        </div>
 
-    <div class="tab-buttons">
-        <button id="direct-btn" class="active" onclick="showForm('direct')">사업자 직접 입력</button>
-        <button id="excel-btn" onclick="showForm('excel')">사업자 엑셀 업로드</button>
-        <button id="media-btn" onclick="showForm('media')">매체 이름 검색</button>
+        <div class="tab-buttons">
+            <button id="direct-btn" onclick="showForm('direct')">사업자 직접 입력</button>
+            <button id="excel-btn" onclick="showForm('excel')">사업자 엑셀 업로드</button>
+            <button id="media-btn" onclick="showForm('media')">매체 이름 검색</button>
+        </div>
+
+        <div class="tab-content">
+            <div id="direct-form" class="form-section">
+                <div class="info">사업자등록번호를 한 줄에 하나씩 입력하세요.</div>
+                <form action="/lookup-direct" method="post">
+                    <textarea name="business_numbers" placeholder="예시)&#10;1234567890&#10;824-87-00993" required></textarea>
+                    <input type="submit" value="사업자 조회하기">
+                </form>
+            </div>
+
+            <div id="excel-form" class="form-section">
+                <div class="info">
+                    사업자등록번호가 첫 번째 열에 입력된 엑셀(.xlsx) 파일을 업로드하세요.<br>
+                    <span style="font-size: 0.9em; opacity: 0.8; margin-top: 5px; display: inline-block;">※ 첫 번째 행(1행)은 제목 줄이므로 비워두거나 제목을 입력해주세요.</span>
+                </div>
+                <form action="/upload-excel" method="post" enctype="multipart/form-data">
+                    <input type="file" name="excel_file" accept=".xlsx" required>
+                    <input type="submit" value="조회 및 엑셀 다운로드">
+                </form>
+            </div>
+
+            <div id="media-form" class="form-section">
+                <div class="info">
+                    검색어(예: 미디어, 뉴스)를 입력하면 <b>방송사업자</b> 및 <b>정기간행물</b>을 조회합니다.<br>
+                    <span style="font-size: 0.9em; opacity: 0.8; margin-top: 6px; display: inline-block; color: #475569;">
+                        ※ 데이터 기준일: 방송사업자(2025.08.11.) / 정기간행물(2025.11.04.)
+                    </span>
+                </div>
+                <form action="/search-media" method="post">
+                    <input type="text" name="keyword" placeholder="예: 미디어, 뉴스 (띄어쓰기나 쉼표로 구분)" required>
+                    <input type="submit" value="매체 조회하기">
+                </form>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="error">{% for message in messages %}{{ message }}<br>{% endfor %}</div>
+              {% endif %}
+            {% endwith %}
+        </div>
     </div>
-
-    <div class="tab-content">
-        <div id="direct-form">
-            <div class="info">사업자등록번호를 한 줄에 하나씩 입력하세요.</div>
-            <form action="/lookup-direct" method="post">
-                <textarea name="business_numbers" placeholder="예시)&#10;1234567890" required></textarea><br>
-                <input type="submit" value="조회하기">
-            </form>
-        </div>
-
-        <div id="excel-form">
-            <div class="info">사업자등록번호가 첫 번째 열에 입력된 엑셀(.xlsx) 파일을 업로드하세요.</div>
-            <form action="/upload-excel" method="post" enctype="multipart/form-data">
-                <input type="file" name="excel_file" accept=".xlsx" required><br>
-                <input type="submit" value="조회 및 다운로드">
-            </form>
-        </div>
-
-        <div id="media-form">
-            <div class="info">검색어(예: 미디어, 뉴스)를 입력하면 <b>방송사업자</b> 및 <b>정기간행물</b> 등록 현황을 동시에 조회합니다.</div>
-            <form action="/search-media" method="post">
-                <input type="text" name="keyword" placeholder="예: 미디어, 뉴스, 라디오 (띄어쓰기나 쉼표로 구분)" required><br>
-                <input type="submit" value="매체 조회하기">
-            </form>
-        </div>
-    </div>
-
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="error">{% for message in messages %}{{ message }}<br>{% endfor %}</div>
-      {% endif %}
-    {% endwith %}
 
     <script>
-        function showForm(formName) {
-            // 모든 폼 숨기고 버튼 비활성화
-            document.getElementById('direct-form').style.display = 'none';
-            document.getElementById('excel-form').style.display = 'none';
-            document.getElementById('media-form').style.display = 'none';
-            document.getElementById('direct-btn').classList.remove('active');
-            document.getElementById('excel-btn').classList.remove('active');
-            document.getElementById('media-btn').classList.remove('active');
+        document.addEventListener("DOMContentLoaded", function() {
+            // 브라우저가 마지막으로 사용한 탭을 기억하여 불러옴 (기본값은 direct)
+            const lastTab = localStorage.getItem('activeTab') || 'direct';
+            showForm(lastTab);
+        });
 
-            // 선택한 탭만 보여주기
+        function showForm(formName) {
+            document.querySelectorAll('.form-section').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-buttons button').forEach(el => el.classList.remove('active'));
+
             document.getElementById(formName + '-form').style.display = 'block';
             document.getElementById(formName + '-btn').classList.add('active');
+
+            // 사용자가 클릭한 탭을 로컬 스토리지에 저장
+            localStorage.setItem('activeTab', formName);
         }
     </script>
 </body>

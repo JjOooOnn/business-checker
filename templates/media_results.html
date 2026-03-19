@@ -2,85 +2,97 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>'{{ keyword }}' 매체 검색 결과</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px;}
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #f8f9fa; }
-        .error { color: red; font-weight: bold; }
-
-        /* 방송사업자 배지 디자인 (파란색) */
-        .badge-broad {
-            background-color: #e3f2fd;
-            color: #0d47a1;
-            border: 1px solid #bbdefb;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: bold;
-            display: inline-block;
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #e2e8f0;
         }
-
-        /* 정기간행물 배지 디자인 (초록색) */
-        .badge-pub {
-            background-color: #e8f5e9;
-            color: #1b5e20;
-            border: 1px solid #c8e6c9;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: bold;
-            display: inline-block;
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg-color); color: var(--text-main);
+            margin: 0; padding: 40px 20px;
+            display: flex; justify-content: center;
         }
+        .container {
+            background: var(--card-bg); width: 100%; max-width: 900px;
+            border-radius: 12px; padding: 30px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        h1 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95rem; }
+        th, td { border-bottom: 1px solid var(--border-color); padding: 14px 10px; text-align: left; }
+        th { background-color: #f8fafc; font-weight: 600; color: #475569; }
+        tr:hover { background-color: #f8fafc; }
 
-        a { text-decoration: none; }
+        .badge-broad { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; font-weight: 600; display: inline-block; }
+        .badge-pub { background-color: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 4px 10px; border-radius: 20px; font-size: 0.85em; font-weight: 600; display: inline-block; }
+
+        .btn-back {
+            display: inline-block; margin-top: 30px; padding: 14px 28px;
+            background-color: var(--primary-color); color: white;
+            text-decoration: none; border-radius: 8px; font-weight: bold;
+            transition: 0.2s; text-align: center;
+        }
+        .btn-back:hover { background-color: #1d4ed8; }
+        .summary { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); font-size: 1.05rem; }
     </style>
 </head>
 <body>
-    <h1>'{{ keyword }}' 매체 검색 결과</h1>
+    <div class="container">
+        <h1>🔍 '{{ keyword }}' 검색 결과</h1>
 
-    {% if error %}
-        <p class="error">오류가 발생했습니다: {{ error }}</p>
-    {% endif %}
-
-    {% if results %}
-        <p>방송 및 정기간행물에서 총 <strong>{{ results|length }}</strong>건이 조회되었습니다.</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>구분</th>
-                    <th>매체명(제호/방송사명)</th>
-                    <th>발행소명</th>
-                    <th>상태</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in results %}
-                    <tr>
-                        <td>
-                            {% if '방송사업자' in item.category %}
-                                <span class="badge-broad">{{ item.category }}</span>
-                            {% elif '정기간행물' in item.category %}
-                                <span class="badge-pub">{{ item.category }}</span>
-                            {% else %}
-                                <span>{{ item.category }}</span>
-                            {% endif %}
-                        </td>
-                        <td style="font-weight: bold;">{{ item.name }}</td>
-                        <td>{{ item.owner }}</td>
-                        <td>{{ item.status }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        {% if not error %}
-        <p>검색된 매체가 없습니다.</p>
+        {% if error %}
+            <p style="color: #dc2626; font-weight: bold;">오류가 발생했습니다: {{ error }}</p>
         {% endif %}
-    {% endif %}
 
-    <hr>
-    <a href="/"><button style="padding: 10px;">처음으로 돌아가기</button></a>
+        {% if results %}
+            <div class="summary">
+                총 <strong>{{ results|length }}</strong>건의 매체가 조회되었습니다.
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th width="20%">구분</th>
+                        <th width="40%">매체명(제호/방송사명)</th>
+                        <th width="25%">발행소명</th>
+                        <th width="15%">상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in results %}
+                        <tr>
+                            <td>
+                                {% if '방송사업자' in item.category %}
+                                    <span class="badge-broad">{{ item.category }}</span>
+                                {% elif '정기간행물' in item.category %}
+                                    <span class="badge-pub">{{ item.category }}</span>
+                                {% else %}
+                                    <span>{{ item.category }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-weight: 600; color: #0f172a;">{{ item.name }}</td>
+                            <td>{{ item.owner }}</td>
+                            <td>
+                                <span style="color: #475569; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">{{ item.status }}</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            {% if not error %}
+            <div class="summary">검색된 매체가 없습니다. 다른 키워드로 검색해 보세요.</div>
+            {% endif %}
+        {% endif %}
+
+        <div style="text-align: center;">
+            <a href="/" class="btn-back">← 돌아가기</a>
+        </div>
+    </div>
 </body>
 </html>
