@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import io
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for
+from werkzeug.utils import secure_filename
 
 # --- Flask 앱 생성 ---
 app = Flask(__name__)
@@ -273,7 +274,9 @@ def upload_excel():
         return redirect(url_for('index'))
 
     file = request.files['excel_file']
-    if not file.filename.endswith('.xlsx'):
+    filename = secure_filename(file.filename)  # 파일명에서 해킹용 특수문자 자동 제거
+    # 소문자로 변환하여 .XLSX 등 대문자 우회 방어
+    if not filename.lower().endswith('.xlsx'):
         flash("엑셀 파일(.xlsx)만 업로드할 수 있습니다.")
         return redirect(url_for('index'))
 
