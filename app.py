@@ -166,7 +166,32 @@ def process_api_calls(business_numbers: list, service_key: str):
 #
 #     return results
 
-# --- [신규 기능] 매체(방송/정기간행물) 다중 키워드 검색 로직 (CSV 파일 버전) ---
+# --- [신규 기능] 서버 구동 시 CSV 데이터를 메모리에 미리 로드 (속도 100배 향상) ---
+brd_file = 'broadcasting_20250811.csv'
+pub_file = 'periodicals_20251104.csv'
+
+# 1. 방송사업자 데이터 전역 변수로 로드
+if os.path.exists(brd_file):
+    try:
+        global_df_brd = pd.read_csv(brd_file, encoding='utf-8').fillna('')
+    except UnicodeDecodeError:
+        global_df_brd = pd.read_csv(brd_file, encoding='cp949').fillna('')
+else:
+    print(f"🚨 서버 경고: 파일이 없습니다 -> {brd_file}")
+    global_df_brd = pd.DataFrame()
+
+# 2. 정기간행물 데이터 전역 변수로 로드
+if os.path.exists(pub_file):
+    try:
+        global_df_pub = pd.read_csv(pub_file, encoding='utf-8').fillna('')
+    except UnicodeDecodeError:
+        global_df_pub = pd.read_csv(pub_file, encoding='cp949').fillna('')
+else:
+    print(f"🚨 서버 경고: 파일이 없습니다 -> {pub_file}")
+    global_df_pub = pd.DataFrame()
+
+
+# --- [수정됨] 매체 다중 키워드 검색 로직 (메모리 검색) ---
 def search_media_csv(keyword_input):
     results = []
     # 쉼표나 공백으로 구분된 여러 키워드를 리스트로 쪼개기
@@ -174,24 +199,14 @@ def search_media_csv(keyword_input):
     if not keywords:
         return results
 
-    # 1. 방송사업자 CSV 검색
-    brd_file = 'broadcasting_20250811.csv'
-    if os.path.exists(brd_file):
-        try:
-            # 공공데이터포털 CSV는 주로 cp949 인코딩을 사용합니다.
-            df_brd = pd.read_csv(brd_file, encoding='utf-8')
-        except UnicodeDecodeError:
-            df_brd = pd.read_csv(brd_file, encoding='cp949')
-
-        df_brd = df_brd.fillna('')  # 빈칸(NaN) 처리
-
-        for _, row in df_brd.iterrows():
+    # 1. 방송사업자 메모리 검색
+    if not global_df_brd.empty:
+        for _, row in global_df_brd.iterrows():
             brd_name = str(row.get('방송사명', ''))
             station_name = str(row.get('방송국명', ''))
 
             if any(k in brd_name or k in station_name for k in keywords):
-                display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (
-                            brd_name or station_name or '-')
+                display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (brd_name or station_name or '-')
                 brd_type = str(row.get('유형', ''))
                 category_text = f"방송사업자({brd_type})" if brd_type else "방송사업자"
 
@@ -201,20 +216,10 @@ def search_media_csv(keyword_input):
                     "owner": "-",
                     "status": "허가"
                 })
-    else:
-        print(f"서버에 파일이 없습니다: {brd_file}")
 
-    # 2. 정기간행물 CSV 검색
-    pub_file = 'periodicals_20251104.csv'
-    if os.path.exists(pub_file):
-        try:
-            df_pub = pd.read_csv(pub_file, encoding='utf-8')
-        except UnicodeDecodeError:
-            df_pub = pd.read_csv(pub_file, encoding='cp949')
-
-        df_pub = df_pub.fillna('')
-
-        for _, row in df_pub.iterrows():
+    # 2. 정기간행물 메모리 검색
+    if not global_df_pub.empty:
+        for _, row in global_df_pub.iterrows():
             title = str(row.get('제호', ''))
             publisher = str(row.get('발행소명', ''))
 
@@ -228,8 +233,6 @@ def search_media_csv(keyword_input):
                     "owner": publisher or '-',
                     "status": str(row.get('상태', '-'))
                 })
-    else:
-        print(f"서버에 파일이 없습니다: {pub_file}")
 
     return results
 
