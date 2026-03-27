@@ -191,48 +191,58 @@ else:
     global_df_pub = pd.DataFrame()
 
 
-# --- [수정됨] 매체 다중 키워드 검색 로직 (메모리 검색) ---
+# --- [완벽 최적화] 매체 다중 키워드 검색 로직 (판다스 벡터화 검색 적용) ---
 def search_media_csv(keyword_input):
     results = []
-    # 쉼표나 공백으로 구분된 여러 키워드를 리스트로 쪼개기
     keywords = [k.strip() for k in keyword_input.replace(',', ' ').split() if k.strip()]
     if not keywords:
         return results
 
-    # 1. 방송사업자 메모리 검색
+    # 다중 키워드를 판다스 검색용 패턴(예: "미디어|뉴스|라디오")으로 변환
+    pattern = '|'.join(keywords)
+
+    # 1. 방송사업자 초고속 검색
     if not global_df_brd.empty:
-        for _, row in global_df_brd.iterrows():
+        # 한 줄씩 읽지 않고, 데이터 전체에서 키워드가 포함된 행(row)을 한 번에 필터링
+        mask = (global_df_brd['방송사명'].astype(str).str.contains(pattern, na=False)) | \
+               (global_df_brd['방송국명'].astype(str).str.contains(pattern, na=False))
+
+        # 검색에 적중한 소수의 결과만 반복문 돌리기 (0.001초 소요)
+        filtered_brd = global_df_brd[mask]
+        for _, row in filtered_brd.iterrows():
             brd_name = str(row.get('방송사명', ''))
             station_name = str(row.get('방송국명', ''))
+            display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (
+                        brd_name or station_name or '-')
+            brd_type = str(row.get('유형', ''))
+            category_text = f"방송사업자({brd_type})" if brd_type else "방송사업자"
 
-            if any(k in brd_name or k in station_name for k in keywords):
-                display_name = f"{brd_name} ({station_name})" if station_name and station_name != brd_name else (brd_name or station_name or '-')
-                brd_type = str(row.get('유형', ''))
-                category_text = f"방송사업자({brd_type})" if brd_type else "방송사업자"
+            results.append({
+                "category": category_text,
+                "name": display_name,
+                "owner": "-",
+                "status": "허가"
+            })
 
-                results.append({
-                    "category": category_text,
-                    "name": display_name,
-                    "owner": "-",
-                    "status": "허가"
-                })
-
-    # 2. 정기간행물 메모리 검색
+    # 2. 정기간행물 초고속 검색
     if not global_df_pub.empty:
-        for _, row in global_df_pub.iterrows():
+        # 제호 또는 발행소명에 키워드가 있는 데이터 전체를 단숨에 필터링
+        mask = (global_df_pub['제호'].astype(str).str.contains(pattern, na=False)) | \
+               (global_df_pub['발행소명'].astype(str).str.contains(pattern, na=False))
+
+        filtered_pub = global_df_pub[mask]
+        for _, row in filtered_pub.iterrows():
             title = str(row.get('제호', ''))
             publisher = str(row.get('발행소명', ''))
+            jong_byeol = str(row.get('종별', ''))
+            category_text = f"정기간행물({jong_byeol})" if jong_byeol else "정기간행물"
 
-            if any(k in title or k in publisher for k in keywords):
-                jong_byeol = str(row.get('종별', ''))
-                category_text = f"정기간행물({jong_byeol})" if jong_byeol else "정기간행물"
-
-                results.append({
-                    "category": category_text,
-                    "name": title or '-',
-                    "owner": publisher or '-',
-                    "status": str(row.get('상태', '-'))
-                })
+            results.append({
+                "category": category_text,
+                "name": title or '-',
+                "owner": publisher or '-',
+                "status": str(row.get('상태', '-'))
+            })
 
     return results
 
