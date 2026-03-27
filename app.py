@@ -361,6 +361,43 @@ def search_media():
 
     return render_template('media_results.html', keyword=keyword, results=results)
 
+# --- [신규 기능] 매체 검색 결과 엑셀 다운로드 라우팅 ---
+@app.route('/download-media-excel', methods=['POST'])
+def download_media_excel():
+    keyword = request.form.get('keyword', '').strip()
+    if not keyword:
+        flash("검색어가 없습니다.")
+        return redirect(url_for('index'))
+
+    # 기존에 만들어둔 초고속 메모리 검색 함수 재사용
+    results = search_media_csv(keyword)
+
+    if not results:
+        flash("다운로드할 데이터가 없습니다.")
+        return redirect(url_for('index'))
+
+    # 결과를 데이터프레임으로 변환하고 엑셀용으로 컬럼명 예쁘게 변경
+    df = pd.DataFrame(results)
+    df.rename(columns={
+        'category': '구분',
+        'name': '매체명(제호/방송사명)',
+        'owner': '발행소명',
+        'status': '상태'
+    }, inplace=True)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='매체검색결과')
+    output.seek(0)
+
+    # 파일명에 검색어를 포함시켜서 다운로드
+    return send_file(
+        output,
+        download_name=f'매체검색결과_{keyword}.xlsx',
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 
 if __name__ == '__main__':
     app.run(debug=True)
