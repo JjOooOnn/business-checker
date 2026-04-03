@@ -168,7 +168,7 @@ def process_api_calls(business_numbers: list, service_key: str):
 
 # --- [신규 기능] 서버 구동 시 CSV 데이터를 메모리에 미리 로드 (속도 100배 향상) ---
 brd_file = 'broadcasting_20250811.csv'
-pub_file = 'periodicals_20251104.csv'
+pub_file = 'periodicals_20260403.csv'
 
 # 1. 방송사업자 데이터 전역 변수로 로드
 if os.path.exists(brd_file):
