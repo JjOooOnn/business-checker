@@ -25,22 +25,48 @@
         }
         h1 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
 
-        /* [신규] 통계 바 */
-        .stats-bar {
-            display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
-        }
+        /* 통계 바 */
+        .stats-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
         .stat-chip {
             display: flex; align-items: center; gap: 8px;
             padding: 10px 16px; border-radius: 8px;
-            font-size: 0.92rem; font-weight: 600;
+            font-size: 0.92rem; font-weight: 600; cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            user-select: none;
         }
+        .stat-chip:hover { opacity: 0.8; transform: translateY(-1px); }
+        .stat-chip.inactive { opacity: 0.4; }
         .stat-chip .num { font-size: 1.15rem; font-weight: 800; }
         .stat-active    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
         .stat-suspended { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
         .stat-closed    { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
         .stat-total     { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
 
-        /* [신규] 잘못된 번호 경고 */
+        /* 필터 리셋 안내 */
+        .filter-active-hint {
+            display: none;
+            font-size: 0.85rem; color: #2563eb; cursor: pointer;
+            margin-bottom: 8px; text-decoration: underline;
+        }
+
+        /* 테이블 내 검색 */
+        .table-search-wrap {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 14px;
+        }
+        .table-search {
+            flex: 1; padding: 10px 14px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            font-size: 0.95rem; font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .table-search:focus {
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .search-count { font-size: 0.85rem; color: #64748b; white-space: nowrap; }
+
+        /* 잘못된 번호 경고 */
         .invalid-warning {
             background: #fffbeb; border: 1px solid #fcd34d;
             border-left: 4px solid #f59e0b;
@@ -54,17 +80,22 @@
         }
         .invalid-list li {
             background: #fef3c7; border: 1px solid #fcd34d;
-            border-radius: 4px; padding: 2px 8px; font-family: monospace; font-size: 0.85rem;
+            border-radius: 4px; padding: 2px 8px;
+            font-family: monospace; font-size: 0.85rem;
         }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
         th, td { border-bottom: 1px solid var(--border-color); padding: 14px 10px; text-align: left; }
         th { background-color: #f8fafc; font-weight: 600; color: #475569; }
         tr:hover { background-color: #f8fafc; }
-        .closed td { color: #dc2626; background-color: #fef2f2; }
-        .suspended td { color: #b45309; background-color: #fffbeb; }
+        .row-closed    td { color: #dc2626; background-color: #fef2f2; }
+        .row-suspended td { color: #b45309; background-color: #fffbeb; }
+        tr.hidden-row  { display: none; }
 
-        /* 버튼 그룹 */
+        /* 빈 검색 결과 */
+        .no-result-row td { text-align: center; color: #94a3b8; padding: 30px; font-size: 0.95rem; }
+
+        /* 버튼 */
         .button-group {
             display: flex; justify-content: center; gap: 15px;
             margin-top: 30px; flex-wrap: wrap;
@@ -72,19 +103,15 @@
         .btn-back {
             display: inline-block; padding: 14px 28px;
             background-color: var(--primary-color); color: white;
-            text-decoration: none; border-radius: 8px; font-weight: bold;
-            transition: 0.2s; text-align: center;
+            text-decoration: none; border-radius: 8px; font-weight: bold; transition: 0.2s;
         }
         .btn-back:hover { background-color: #1d4ed8; }
         .btn-excel {
-            display: inline-block; padding: 14px 28px;
-            background-color: #10b981; color: white;
-            text-decoration: none; border-radius: 8px; font-weight: bold;
-            transition: 0.2s; border: none; cursor: pointer; font-size: 1rem;
+            padding: 14px 28px; background-color: #10b981; color: white;
+            border-radius: 8px; font-weight: bold; transition: 0.2s;
+            border: none; cursor: pointer; font-size: 1rem;
         }
         .btn-excel:hover { background-color: #059669; }
-
-        .summary { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); font-size: 1.05rem; }
     </style>
 </head>
 <body>
@@ -95,87 +122,138 @@
             <p style="color: #dc2626; font-weight: bold;">오류가 발생했습니다: {{ error }}</p>
         {% endif %}
 
-        <!-- [신규] 유효하지 않은 번호 경고 -->
         {% if invalid_numbers %}
         <details class="invalid-warning" open>
-            <summary>⚠️ 형식 오류 번호 {{ invalid_numbers|length }}건 (숫자 10자리가 아닌 값 — API 호출에서 제외됨)</summary>
+            <summary>⚠️ 형식 오류 {{ invalid_numbers|length }}건 — 숫자 10자리 아닌 값 (API 호출 제외)</summary>
             <ul class="invalid-list">
-                {% for num in invalid_numbers %}
-                    <li>{{ num }}</li>
-                {% endfor %}
+                {% for num in invalid_numbers %}<li>{{ num }}</li>{% endfor %}
             </ul>
         </details>
         {% endif %}
 
         {% if results %}
 
-            <!-- [신규] 통계 바 -->
-            {% if stats %}
-            <div class="stats-bar">
-                <div class="stat-chip stat-total">
-                    총 <span class="num">{{ results|length }}</span>건
-                </div>
-                <div class="stat-chip stat-active">
-                    계속사업자 <span class="num">{{ stats.active }}</span>건
-                </div>
-                {% if stats.suspended > 0 %}
-                <div class="stat-chip stat-suspended">
-                    휴업 <span class="num">{{ stats.suspended }}</span>건
-                </div>
-                {% endif %}
-                {% if stats.closed > 0 %}
-                <div class="stat-chip stat-closed">
-                    폐업 <span class="num">{{ stats.closed }}</span>건
-                </div>
-                {% endif %}
+        <!-- 통계 칩 (클릭으로 필터) -->
+        {% if stats %}
+        <div class="stats-bar">
+            <div class="stat-chip stat-total"   data-filter="all"       onclick="filterTable('all')">
+                전체 <span class="num">{{ results|length }}</span>건
+            </div>
+            <div class="stat-chip stat-active"  data-filter="01"        onclick="filterTable('01')">
+                계속사업자 <span class="num">{{ stats.active }}</span>건
+            </div>
+            {% if stats.suspended > 0 %}
+            <div class="stat-chip stat-suspended" data-filter="02"      onclick="filterTable('02')">
+                휴업 <span class="num">{{ stats.suspended }}</span>건
             </div>
             {% endif %}
+            {% if stats.closed > 0 %}
+            <div class="stat-chip stat-closed"  data-filter="03"        onclick="filterTable('03')">
+                폐업 <span class="num">{{ stats.closed }}</span>건
+            </div>
+            {% endif %}
+        </div>
+        <div class="filter-active-hint" id="filter-hint" onclick="filterTable('all')">
+            ✕ 필터 해제 (전체 보기)
+        </div>
+        {% endif %}
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>사업자등록번호 (b_no)</th>
-                        <th>납세자상태 (b_stt)</th>
-                        <th>상태코드 (b_stt_cd)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for business in results %}
-                        <tr {% if business.b_stt_cd == '03' %}class="closed"
-                            {% elif business.b_stt_cd == '02' %}class="suspended"{% endif %}>
-                            <td style="font-weight: 600; letter-spacing: 0.5px; font-family: monospace;">
-                                {{ business.b_no }}
-                            </td>
-                            <td>
-                                {% if business.b_stt_cd in ['02', '03'] %}
-                                    <span style="font-weight:bold;">{{ business.b_stt }}</span>
-                                {% else %}
-                                    {{ business.b_stt }}
-                                {% endif %}
-                            </td>
-                            <td>{{ business.b_stt_cd }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- 테이블 내 검색 -->
+        <div class="table-search-wrap">
+            <input type="text" class="table-search" id="table-search"
+                   placeholder="🔍  사업자번호로 검색..." oninput="applySearch()">
+            <span class="search-count" id="search-count"></span>
+        </div>
+
+        <table id="result-table">
+            <thead>
+                <tr>
+                    <th>사업자등록번호</th>
+                    <th>납세자상태</th>
+                    <th>상태코드</th>
+                </tr>
+            </thead>
+            <tbody id="result-tbody">
+                {% for business in results %}
+                <tr data-stt-cd="{{ business.b_stt_cd }}"
+                    data-bno="{{ business.b_no }}"
+                    {% if business.b_stt_cd == '03' %}class="row-closed"
+                    {% elif business.b_stt_cd == '02' %}class="row-suspended"{% endif %}>
+                    <td style="font-weight:600; letter-spacing:0.5px; font-family:monospace;">
+                        {{ business.b_no }}
+                    </td>
+                    <td>
+                        {% if business.b_stt_cd in ['02','03'] %}
+                            <strong>{{ business.b_stt }}</strong>
+                        {% else %}
+                            {{ business.b_stt }}
+                        {% endif %}
+                    </td>
+                    <td>{{ business.b_stt_cd }}</td>
+                </tr>
+                {% endfor %}
+                <!-- 검색 결과 없을 때 표시 -->
+                <tr id="no-result-row" class="no-result-row" style="display:none;">
+                    <td colspan="3">검색 결과가 없습니다.</td>
+                </tr>
+            </tbody>
+        </table>
 
         {% else %}
             {% if not error %}
-            <div class="summary">조회된 결과가 없습니다.</div>
+            <p style="color:#64748b;">조회된 결과가 없습니다.</p>
             {% endif %}
         {% endif %}
 
         <div class="button-group">
             <a href="/" class="btn-back">← 돌아가기</a>
-
-            <!-- [신규] 직접 입력 결과 엑셀 다운로드 -->
             {% if results and b_numbers_raw %}
-            <form action="/download-direct-excel" method="post" style="margin: 0;">
+            <form action="/download-direct-excel" method="post" style="margin:0;">
                 <textarea name="business_numbers" style="display:none;">{{ b_numbers_raw }}</textarea>
                 <button type="submit" class="btn-excel">📥 엑셀 다운로드</button>
             </form>
             {% endif %}
         </div>
     </div>
+
+    <script>
+        let currentFilter = 'all';
+
+        function filterTable(filter) {
+            currentFilter = filter;
+            const chips = document.querySelectorAll('.stat-chip');
+            chips.forEach(c => {
+                c.classList.toggle('inactive', c.dataset.filter !== filter);
+            });
+            document.getElementById('filter-hint').style.display =
+                filter === 'all' ? 'none' : 'block';
+            applySearch();
+        }
+
+        function applySearch() {
+            const query = document.getElementById('table-search').value.replace(/-/g,'').trim();
+            const rows  = document.querySelectorAll('#result-tbody tr[data-bno]');
+            let visible = 0;
+
+            rows.forEach(row => {
+                const matchFilter = currentFilter === 'all' || row.dataset.sttCd === currentFilter
+                    || row.getAttribute('data-stt-cd') === currentFilter;
+                const matchSearch = query === '' || row.dataset.bno.includes(query);
+                const show = matchFilter && matchSearch;
+                row.classList.toggle('hidden-row', !show);
+                if (show) visible++;
+            });
+
+            const noResult = document.getElementById('no-result-row');
+            noResult.style.display = visible === 0 ? 'table-row' : 'none';
+
+            const countEl = document.getElementById('search-count');
+            if (query) {
+                countEl.textContent = visible + '건 표시 중';
+            } else {
+                countEl.textContent = '';
+            }
+        }
+    </script>
 </body>
 </html>

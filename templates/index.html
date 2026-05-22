@@ -31,7 +31,6 @@
         .header { padding: 30px; text-align: center; border-bottom: 1px solid var(--border-color); }
         h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); font-weight: 700; }
 
-        /* 탭 */
         .tab-buttons {
             display: flex; background-color: #f8fafc;
             border-bottom: 1px solid var(--border-color);
@@ -52,7 +51,6 @@
             font-weight: 700;
         }
 
-        /* 폼 */
         .tab-content { padding: 30px; }
         .form-section { display: none; animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -62,14 +60,14 @@
             border-left: 4px solid #3b82f6; padding: 15px;
             border-radius: 6px; margin-bottom: 20px; font-size: 0.95em; line-height: 1.5;
         }
-        textarea, input[type="text"], input[type="file"] {
+        textarea, input[type="text"] {
             width: 100%; box-sizing: border-box;
             padding: 14px; border: 1px solid var(--border-color);
             border-radius: 8px; font-size: 1rem;
             font-family: inherit; transition: border-color 0.2s;
         }
         textarea { height: 160px; resize: vertical; margin-bottom: 6px; }
-        input[type="text"], input[type="file"] { margin-bottom: 20px; }
+        input[type="text"] { margin-bottom: 20px; }
         textarea:focus, input[type="text"]:focus {
             outline: none; border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -82,7 +80,6 @@
         }
         input[type="submit"]:hover { background-color: var(--primary-hover); }
 
-        /* [신규] 입력 개수 카운터 */
         .input-counter {
             display: flex; justify-content: flex-end; align-items: center;
             margin-bottom: 20px; font-size: 0.88rem; color: var(--text-muted);
@@ -94,13 +91,54 @@
         }
         .counter-badge.warn { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
 
+        /* ── 드래그&드롭 업로드 영역 ── */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary-color);
+            background: #eff6ff;
+        }
+        .drop-zone input[type="file"] {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .drop-zone-icon { font-size: 2rem; margin-bottom: 8px; }
+        .drop-zone-text { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
+        .drop-zone-text span { color: var(--primary-color); font-weight: 700; }
+        .drop-zone-hint { font-size: 0.82rem; color: #94a3b8; margin-top: 6px; }
+
+        /* 파일 선택됨 상태 */
+        .file-selected-info {
+            display: none;
+            align-items: center; gap: 10px;
+            background: #f0fdf4; border: 1px solid #bbf7d0;
+            border-radius: 8px; padding: 12px 16px;
+            margin-bottom: 20px; font-size: 0.92rem; color: #166534;
+        }
+        .file-selected-info .file-icon { font-size: 1.3rem; }
+        .file-selected-info .file-name { font-weight: 600; }
+        .file-selected-info .file-size { color: #4ade80; font-size: 0.82rem; }
+        .file-clear-btn {
+            margin-left: auto; background: none; border: none;
+            color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 2px 6px;
+            border-radius: 4px; transition: color 0.2s;
+        }
+        .file-clear-btn:hover { color: #dc2626; }
+
         .error {
             color: #dc2626; font-weight: bold; margin-top: 15px;
             background: #fef2f2; padding: 12px; border-radius: 6px;
             border: 1px solid #fecaca; text-align: center;
         }
 
-        /* 로딩 오버레이 */
         #loading-overlay {
             display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -148,7 +186,6 @@
                 <form action="/lookup-direct" method="post">
                     <textarea id="direct-textarea" name="business_numbers"
                               placeholder="예시)&#10;1234567890&#10;824-87-00993" required></textarea>
-                    <!-- [신규] 입력 개수 카운터 -->
                     <div class="input-counter">
                         입력된 번호:
                         <span id="direct-counter" class="counter-badge">0건</span>
@@ -157,7 +194,7 @@
                 </form>
             </div>
 
-            <!-- 엑셀 업로드 -->
+            <!-- 엑셀 업로드 (드래그&드롭) -->
             <div id="excel-form" class="form-section">
                 <div class="info">
                     사업자등록번호가 첫 번째 열에 입력된 엑셀(.xlsx) 파일을 업로드하세요.<br>
@@ -165,8 +202,26 @@
                         ※ 첫 번째 행(1행)은 제목 줄이므로 비워두거나 제목을 입력해주세요.
                     </span>
                 </div>
-                <form action="/upload-excel" method="post" enctype="multipart/form-data">
-                    <input type="file" name="excel_file" accept=".xlsx" required>
+                <form id="excel-form-tag" action="/upload-excel" method="post" enctype="multipart/form-data">
+
+                    <!-- 드롭존 -->
+                    <div class="drop-zone" id="drop-zone">
+                        <input type="file" name="excel_file" id="excel-file-input" accept=".xlsx" required>
+                        <div class="drop-zone-icon">📂</div>
+                        <div class="drop-zone-text">파일을 여기에 <span>끌어다 놓거나</span> 클릭하여 선택</div>
+                        <div class="drop-zone-hint">.xlsx 파일만 가능 · 최대 16MB</div>
+                    </div>
+
+                    <!-- 선택된 파일 정보 -->
+                    <div class="file-selected-info" id="file-selected-info">
+                        <span class="file-icon">✅</span>
+                        <div>
+                            <div class="file-name" id="file-name-display"></div>
+                            <div class="file-size" id="file-size-display"></div>
+                        </div>
+                        <button type="button" class="file-clear-btn" id="file-clear-btn" title="파일 취소">✕</button>
+                    </div>
+
                     <input type="submit" value="조회 및 엑셀 다운로드">
                 </form>
             </div>
@@ -199,30 +254,81 @@
             const lastTab = localStorage.getItem('activeTab') || 'direct';
             showForm(lastTab);
 
-            // 로딩 오버레이
             document.querySelectorAll('form').forEach(form => {
                 form.addEventListener('submit', function () {
                     document.getElementById('loading-overlay').style.display = 'flex';
                 });
             });
 
-            // [신규] 사업자번호 입력 개수 실시간 카운터
+            // 사업자번호 카운터
             const textarea = document.getElementById('direct-textarea');
             const counter  = document.getElementById('direct-counter');
-
             function updateCounter() {
-                const lines = textarea.value
-                    .split('\n')
-                    .map(l => l.trim())
-                    .filter(l => l.length > 0);
-                const count = lines.length;
-                counter.textContent = count + '건';
-                // 100건 초과 시 경고 색상
-                counter.className = count > 100 ? 'counter-badge warn' : 'counter-badge';
+                const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                counter.textContent = lines.length + '건';
+                counter.className = lines.length > 100 ? 'counter-badge warn' : 'counter-badge';
+            }
+            textarea.addEventListener('input', updateCounter);
+            updateCounter();
+
+            // ── 드래그&드롭 업로드 ──────────────────────────────
+            const dropZone      = document.getElementById('drop-zone');
+            const fileInput     = document.getElementById('excel-file-input');
+            const fileInfo      = document.getElementById('file-selected-info');
+            const fileNameEl    = document.getElementById('file-name-display');
+            const fileSizeEl    = document.getElementById('file-size-display');
+            const fileClearBtn  = document.getElementById('file-clear-btn');
+
+            function formatBytes(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
             }
 
-            textarea.addEventListener('input', updateCounter);
-            updateCounter(); // 초기 실행
+            function showFileInfo(file) {
+                fileNameEl.textContent = file.name;
+                fileSizeEl.textContent = formatBytes(file.size);
+                dropZone.style.display = 'none';
+                fileInfo.style.display = 'flex';
+            }
+
+            function clearFile() {
+                fileInput.value = '';
+                dropZone.style.display = 'block';
+                fileInfo.style.display = 'none';
+            }
+
+            fileInput.addEventListener('change', function () {
+                if (this.files[0]) showFileInfo(this.files[0]);
+            });
+
+            fileClearBtn.addEventListener('click', clearFile);
+
+            ['dragenter', 'dragover'].forEach(evt => {
+                dropZone.addEventListener(evt, e => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                });
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, e => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                });
+            });
+            dropZone.addEventListener('drop', function (e) {
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+                if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                    alert('.xlsx 파일만 업로드할 수 있습니다.');
+                    return;
+                }
+                // DataTransfer로 input에 파일 주입
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                showFileInfo(file);
+            });
         });
 
         function showForm(formName) {

@@ -25,10 +25,44 @@
         }
         h1 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95rem; }
+        /* 통계 + 필터 탭 */
+        .filter-bar {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .filter-chip {
+            padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border-color);
+            font-size: 0.88rem; font-weight: 600; cursor: pointer;
+            background: #f8fafc; color: #475569;
+            transition: all 0.15s; user-select: none;
+        }
+        .filter-chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .filter-chip.active {
+            background: var(--primary-color); color: white; border-color: var(--primary-color);
+        }
+        .filter-chip.broad.active  { background: #1d4ed8; border-color: #1d4ed8; }
+        .filter-chip.pub.active    { background: #15803d; border-color: #15803d; }
+
+        /* 테이블 내 검색 */
+        .table-search-wrap {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+        }
+        .table-search {
+            flex: 1; padding: 10px 14px;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s;
+        }
+        .table-search:focus {
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .search-count { font-size: 0.85rem; color: #64748b; white-space: nowrap; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
         th, td { border-bottom: 1px solid var(--border-color); padding: 14px 10px; text-align: left; }
         th { background-color: #f8fafc; font-weight: 600; color: #475569; }
         tr:hover { background-color: #f8fafc; }
+        tr.hidden-row { display: none; }
 
         .badge-broad {
             background-color: #eff6ff; color: #1d4ed8;
@@ -41,28 +75,24 @@
             border-radius: 20px; font-size: 0.85em; font-weight: 600; display: inline-block;
         }
 
+        .no-result-row td { text-align: center; color: #94a3b8; padding: 30px; }
+
         .btn-back {
             display: inline-block; padding: 14px 28px;
             background-color: var(--primary-color); color: white;
-            text-decoration: none; border-radius: 8px; font-weight: bold;
-            transition: 0.2s; text-align: center; border: none; cursor: pointer; font-size: 1rem;
+            text-decoration: none; border-radius: 8px; font-weight: bold; transition: 0.2s;
+            border: none; cursor: pointer; font-size: 1rem; text-align: center;
         }
         .btn-back:hover { background-color: #1d4ed8; }
         .btn-excel {
             display: inline-block; padding: 14px 28px;
             background-color: #10b981; color: white;
-            text-decoration: none; border-radius: 8px; font-weight: bold;
-            transition: 0.2s; text-align: center; border: none; cursor: pointer; font-size: 1rem;
+            border-radius: 8px; font-weight: bold; transition: 0.2s;
+            border: none; cursor: pointer; font-size: 1rem;
         }
         .btn-excel:hover { background-color: #059669; }
         .button-group { display: flex; justify-content: center; gap: 15px; margin-top: 30px; }
 
-        .summary {
-            background: #f8fafc; padding: 15px; border-radius: 8px;
-            margin-bottom: 20px; border: 1px solid var(--border-color); font-size: 1.05rem;
-        }
-
-        /* 형광펜 효과 */
         .highlight {
             background-color: #fef08a; padding: 0 2px;
             border-radius: 3px; font-weight: bold; color: #1e293b;
@@ -78,83 +108,143 @@
         {% endif %}
 
         {% if results %}
-            <div class="summary">
-                총 <strong>{{ results|length }}</strong>건의 매체가 조회되었습니다.
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th width="20%">구분</th>
-                        <th width="40%">매체명(제호/방송사명)</th>
-                        <th width="25%">발행소명</th>
-                        <th width="15%">상태</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in results %}
-                        <tr>
-                            <td>
-                                {% if '방송사업자' in item.category %}
-                                    <span class="badge-broad">{{ item.category }}</span>
-                                {% elif '정기간행물' in item.category %}
-                                    <span class="badge-pub">{{ item.category }}</span>
-                                {% else %}
-                                    <span>{{ item.category }}</span>
-                                {% endif %}
-                            </td>
-                            <td style="font-weight: 600; color: #0f172a;" class="search-target">{{ item.name }}</td>
-                            <td class="search-target">{{ item.owner }}</td>
-                            <td>
-                                <span style="color: #475569; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 0.85em;">
-                                    {{ item.status }}
-                                </span>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+        <!-- 필터 탭 (카테고리 + 건수 표시) -->
+        <div class="filter-bar" id="filter-bar">
+            <button class="filter-chip active" data-filter="all"   onclick="filterMedia('all')">
+                전체 <span id="cnt-all">{{ results|length }}</span>건
+            </button>
+            <button class="filter-chip broad" data-filter="broad"  onclick="filterMedia('broad')">
+                📺 방송사업자 <span id="cnt-broad">0</span>건
+            </button>
+            <button class="filter-chip pub"   data-filter="pub"    onclick="filterMedia('pub')">
+                📰 정기간행물 <span id="cnt-pub">0</span>건
+            </button>
+        </div>
+
+        <!-- 테이블 내 검색 -->
+        <div class="table-search-wrap">
+            <input type="text" class="table-search" id="table-search"
+                   placeholder="🔍  매체명 또는 발행소명으로 검색..." oninput="applySearch()">
+            <span class="search-count" id="search-count"></span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th width="20%">구분</th>
+                    <th width="38%">매체명(제호/방송사명)</th>
+                    <th width="27%">발행소명</th>
+                    <th width="15%">상태</th>
+                </tr>
+            </thead>
+            <tbody id="media-tbody">
+                {% for item in results %}
+                <tr data-type="{{ 'broad' if '방송사업자' in item.category else 'pub' }}"
+                    data-name="{{ item.name }}" data-owner="{{ item.owner }}">
+                    <td>
+                        {% if '방송사업자' in item.category %}
+                            <span class="badge-broad">{{ item.category }}</span>
+                        {% elif '정기간행물' in item.category %}
+                            <span class="badge-pub">{{ item.category }}</span>
+                        {% else %}
+                            <span>{{ item.category }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight:600; color:#0f172a;" class="search-target">{{ item.name }}</td>
+                    <td class="search-target">{{ item.owner }}</td>
+                    <td>
+                        <span style="color:#475569; background:#f1f5f9; padding:4px 8px; border-radius:4px; font-size:0.85em;">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr id="no-result-row" class="no-result-row" style="display:none;">
+                    <td colspan="4">조건에 맞는 결과가 없습니다.</td>
+                </tr>
+            </tbody>
+        </table>
+
         {% else %}
             {% if not error %}
-            <div class="summary">검색된 매체가 없습니다. 다른 키워드로 검색해 보세요.</div>
+            <p style="color:#64748b;">검색된 매체가 없습니다. 다른 키워드로 검색해 보세요.</p>
             {% endif %}
         {% endif %}
 
         <div class="button-group">
             <a href="/" class="btn-back">← 돌아가기</a>
-
             {% if results %}
-            <form action="/download-media-excel" method="post" style="margin: 0;">
+            <form action="/download-media-excel" method="post" style="margin:0;">
                 <input type="hidden" name="keyword" value="{{ keyword }}">
-                <button type="submit" class="btn-excel">📥 엑셀로 다운로드</button>
+                <button type="submit" class="btn-excel">📥 엑셀 다운로드</button>
             </form>
             {% endif %}
         </div>
     </div>
 
     <script>
+        let currentFilter = 'all';
+
+        // ── 카테고리 건수 집계 ──────────────────────────────────────────
         document.addEventListener("DOMContentLoaded", function () {
+            const rows = document.querySelectorAll('#media-tbody tr[data-type]');
+            let broad = 0, pub = 0;
+            rows.forEach(r => { if (r.dataset.type === 'broad') broad++; else pub++; });
+            document.getElementById('cnt-broad').textContent = broad;
+            document.getElementById('cnt-pub').textContent   = pub;
+
+            // 키워드 하이라이트
             const rawKeyword = {{ keyword | tojson }};
+            const keywords = rawKeyword.replace(/,/g,' ').split(' ').filter(k => k.trim());
+            if (keywords.length > 0) highlightKeywords(keywords);
+        });
 
-            // [수정] 쉼표·공백 기준으로 키워드 분리
-            const keywords = rawKeyword.replace(/,/g, ' ').split(' ').filter(k => k.trim() !== '');
-            if (keywords.length === 0) return;
+        // ── 카테고리 필터 ──────────────────────────────────────────────
+        function filterMedia(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.filter === filter);
+            });
+            applySearch();
+        }
 
-            const targetCells = document.querySelectorAll('.search-target');
+        // ── 테이블 내 검색 ─────────────────────────────────────────────
+        function applySearch() {
+            const query = document.getElementById('table-search').value.trim().toLowerCase();
+            const rows  = document.querySelectorAll('#media-tbody tr[data-type]');
+            let visible = 0;
 
-            targetCells.forEach(cell => {
+            rows.forEach(row => {
+                const matchFilter = currentFilter === 'all' || row.dataset.type === currentFilter;
+                const matchSearch = query === ''
+                    || row.dataset.name.toLowerCase().includes(query)
+                    || row.dataset.owner.toLowerCase().includes(query);
+                const show = matchFilter && matchSearch;
+                row.classList.toggle('hidden-row', !show);
+                if (show) visible++;
+            });
+
+            document.getElementById('no-result-row').style.display =
+                visible === 0 ? 'table-row' : 'none';
+
+            const countEl = document.getElementById('search-count');
+            countEl.textContent = query ? visible + '건 표시 중' : '';
+        }
+
+        // ── 키워드 하이라이트 (정규식 특수문자 + HTML 특수문자 이스케이프) ──
+        function highlightKeywords(keywords) {
+            document.querySelectorAll('.search-target').forEach(cell => {
                 let html = cell.innerHTML;
                 keywords.forEach(kw => {
-                    // [수정] 정규식 특수문자 + HTML 특수문자 모두 이스케이프
-                    const safeKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                                     .replace(/&/g, '&amp;')
-                                     .replace(/</g, '&lt;')
-                                     .replace(/>/g, '&gt;');
-                    const regex = new RegExp("(" + safeKw + ")", "gi");
-                    html = html.replace(regex, "<span class='highlight'>$1</span>");
+                    const safe = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                                   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    html = html.replace(new RegExp('(' + safe + ')', 'gi'),
+                                        "<span class='highlight'>$1</span>");
                 });
                 cell.innerHTML = html;
             });
-        });
+        }
     </script>
 </body>
 </html>
