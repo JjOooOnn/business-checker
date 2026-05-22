@@ -28,13 +28,10 @@
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
             overflow: hidden;
         }
-        .header {
-            padding: 30px; text-align: center;
-            border-bottom: 1px solid var(--border-color);
-        }
+        .header { padding: 30px; text-align: center; border-bottom: 1px solid var(--border-color); }
         h1 { margin: 0; font-size: 1.5rem; color: var(--text-main); font-weight: 700; }
 
-        /* 탭 디자인 */
+        /* 탭 */
         .tab-buttons {
             display: flex; background-color: #f8fafc;
             border-bottom: 1px solid var(--border-color);
@@ -55,7 +52,7 @@
             font-weight: 700;
         }
 
-        /* 폼 디자인 */
+        /* 폼 */
         .tab-content { padding: 30px; }
         .form-section { display: none; animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -63,15 +60,16 @@
         .info {
             background-color: #eff6ff; color: #1e40af;
             border-left: 4px solid #3b82f6; padding: 15px;
-            border-radius: 6px; margin-bottom: 25px; font-size: 0.95em; line-height: 1.5;
+            border-radius: 6px; margin-bottom: 20px; font-size: 0.95em; line-height: 1.5;
         }
         textarea, input[type="text"], input[type="file"] {
             width: 100%; box-sizing: border-box;
             padding: 14px; border: 1px solid var(--border-color);
-            border-radius: 8px; font-size: 1rem; margin-bottom: 20px;
+            border-radius: 8px; font-size: 1rem;
             font-family: inherit; transition: border-color 0.2s;
         }
-        textarea { height: 160px; resize: vertical; }
+        textarea { height: 160px; resize: vertical; margin-bottom: 6px; }
+        input[type="text"], input[type="file"] { margin-bottom: 20px; }
         textarea:focus, input[type="text"]:focus {
             outline: none; border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -83,14 +81,31 @@
             cursor: pointer; transition: background-color 0.2s;
         }
         input[type="submit"]:hover { background-color: var(--primary-hover); }
-        .error { color: #dc2626; font-weight: bold; margin-top: 15px; background: #fef2f2; padding: 12px; border-radius: 6px; border: 1px solid #fecaca; text-align: center; }
 
-        /* --- 신규: 전체화면 로딩 오버레이 디자인 --- */
+        /* [신규] 입력 개수 카운터 */
+        .input-counter {
+            display: flex; justify-content: flex-end; align-items: center;
+            margin-bottom: 20px; font-size: 0.88rem; color: var(--text-muted);
+        }
+        .counter-badge {
+            background: #eff6ff; color: var(--primary-color);
+            border: 1px solid #bfdbfe; border-radius: 12px;
+            padding: 3px 10px; font-weight: 600; margin-left: 6px;
+        }
+        .counter-badge.warn { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+
+        .error {
+            color: #dc2626; font-weight: bold; margin-top: 15px;
+            background: #fef2f2; padding: 12px; border-radius: 6px;
+            border: 1px solid #fecaca; text-align: center;
+        }
+
+        /* 로딩 오버레이 */
         #loading-overlay {
-            display: none; /* 평소에는 숨겨둠 */
+            display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.85); /* 반투명 흰색 배경 */
-            backdrop-filter: blur(3px); /* 배경 흐림 효과 */
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(3px);
             z-index: 9999;
             flex-direction: column; justify-content: center; align-items: center;
         }
@@ -121,23 +136,34 @@
 
         <div class="tab-buttons">
             <button id="direct-btn" onclick="showForm('direct')">사업자 직접 입력</button>
-            <button id="excel-btn" onclick="showForm('excel')">사업자 엑셀 업로드</button>
-            <button id="media-btn" onclick="showForm('media')">매체 이름 검색</button>
+            <button id="excel-btn"  onclick="showForm('excel')">사업자 엑셀 업로드</button>
+            <button id="media-btn"  onclick="showForm('media')">매체 이름 검색</button>
         </div>
 
         <div class="tab-content">
+
+            <!-- 직접 입력 -->
             <div id="direct-form" class="form-section">
-                <div class="info">사업자등록번호를 한 줄에 하나씩 입력하세요.</div>
+                <div class="info">사업자등록번호를 한 줄에 하나씩 입력하세요. (하이픈 포함/미포함 모두 가능)</div>
                 <form action="/lookup-direct" method="post">
-                    <textarea name="business_numbers" placeholder="예시)&#10;1234567890&#10;824-87-00993" required></textarea>
+                    <textarea id="direct-textarea" name="business_numbers"
+                              placeholder="예시)&#10;1234567890&#10;824-87-00993" required></textarea>
+                    <!-- [신규] 입력 개수 카운터 -->
+                    <div class="input-counter">
+                        입력된 번호:
+                        <span id="direct-counter" class="counter-badge">0건</span>
+                    </div>
                     <input type="submit" value="사업자 조회하기">
                 </form>
             </div>
 
+            <!-- 엑셀 업로드 -->
             <div id="excel-form" class="form-section">
                 <div class="info">
                     사업자등록번호가 첫 번째 열에 입력된 엑셀(.xlsx) 파일을 업로드하세요.<br>
-                    <span style="font-size: 0.9em; opacity: 0.8; margin-top: 5px; display: inline-block;">※ 첫 번째 행(1행)은 제목 줄이므로 비워두거나 제목을 입력해주세요.</span>
+                    <span style="font-size: 0.9em; opacity: 0.8; margin-top: 5px; display: inline-block;">
+                        ※ 첫 번째 행(1행)은 제목 줄이므로 비워두거나 제목을 입력해주세요.
+                    </span>
                 </div>
                 <form action="/upload-excel" method="post" enctype="multipart/form-data">
                     <input type="file" name="excel_file" accept=".xlsx" required>
@@ -145,6 +171,7 @@
                 </form>
             </div>
 
+            <!-- 매체 검색 -->
             <div id="media-form" class="form-section">
                 <div class="info">
                     검색어(예: 미디어, 뉴스)를 입력하면 <b>방송사업자</b> 및 <b>정기간행물</b>을 조회합니다.<br>
@@ -153,7 +180,8 @@
                     </span>
                 </div>
                 <form action="/search-media" method="post">
-                    <input type="text" name="keyword" placeholder="예: 미디어, 뉴스 (띄어쓰기나 쉼표로 구분)" required>
+                    <input type="text" name="keyword"
+                           placeholder="예: 미디어, 뉴스 (띄어쓰기나 쉼표로 구분)" required>
                     <input type="submit" value="매체 조회하기">
                 </form>
             </div>
@@ -167,27 +195,41 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // 브라우저가 마지막으로 사용한 탭을 기억하여 불러옴
+        document.addEventListener("DOMContentLoaded", function () {
             const lastTab = localStorage.getItem('activeTab') || 'direct';
             showForm(lastTab);
 
-            // --- 신규: 모든 폼에 제출 이벤트 달아서 로딩 화면 띄우기 ---
+            // 로딩 오버레이
             document.querySelectorAll('form').forEach(form => {
-                form.addEventListener('submit', function() {
+                form.addEventListener('submit', function () {
                     document.getElementById('loading-overlay').style.display = 'flex';
                 });
             });
+
+            // [신규] 사업자번호 입력 개수 실시간 카운터
+            const textarea = document.getElementById('direct-textarea');
+            const counter  = document.getElementById('direct-counter');
+
+            function updateCounter() {
+                const lines = textarea.value
+                    .split('\n')
+                    .map(l => l.trim())
+                    .filter(l => l.length > 0);
+                const count = lines.length;
+                counter.textContent = count + '건';
+                // 100건 초과 시 경고 색상
+                counter.className = count > 100 ? 'counter-badge warn' : 'counter-badge';
+            }
+
+            textarea.addEventListener('input', updateCounter);
+            updateCounter(); // 초기 실행
         });
 
         function showForm(formName) {
             document.querySelectorAll('.form-section').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.tab-buttons button').forEach(el => el.classList.remove('active'));
-
             document.getElementById(formName + '-form').style.display = 'block';
             document.getElementById(formName + '-btn').classList.add('active');
-
-            // 사용자가 클릭한 탭을 로컬 스토리지에 저장
             localStorage.setItem('activeTab', formName);
         }
     </script>

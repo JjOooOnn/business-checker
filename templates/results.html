@@ -24,18 +24,66 @@
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
         h1 { margin-top: 0; font-size: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95rem; }
+
+        /* [신규] 통계 바 */
+        .stats-bar {
+            display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .stat-chip {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 16px; border-radius: 8px;
+            font-size: 0.92rem; font-weight: 600;
+        }
+        .stat-chip .num { font-size: 1.15rem; font-weight: 800; }
+        .stat-active    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .stat-suspended { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+        .stat-closed    { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .stat-total     { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+        /* [신규] 잘못된 번호 경고 */
+        .invalid-warning {
+            background: #fffbeb; border: 1px solid #fcd34d;
+            border-left: 4px solid #f59e0b;
+            border-radius: 6px; padding: 12px 16px;
+            margin-bottom: 20px; font-size: 0.9rem; color: #78350f;
+        }
+        .invalid-warning summary { cursor: pointer; font-weight: 600; }
+        .invalid-list {
+            margin: 8px 0 0 0; padding: 0;
+            list-style: none; display: flex; flex-wrap: wrap; gap: 6px;
+        }
+        .invalid-list li {
+            background: #fef3c7; border: 1px solid #fcd34d;
+            border-radius: 4px; padding: 2px 8px; font-family: monospace; font-size: 0.85rem;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
         th, td { border-bottom: 1px solid var(--border-color); padding: 14px 10px; text-align: left; }
         th { background-color: #f8fafc; font-weight: 600; color: #475569; }
+        tr:hover { background-color: #f8fafc; }
         .closed td { color: #dc2626; background-color: #fef2f2; }
+        .suspended td { color: #b45309; background-color: #fffbeb; }
 
+        /* 버튼 그룹 */
+        .button-group {
+            display: flex; justify-content: center; gap: 15px;
+            margin-top: 30px; flex-wrap: wrap;
+        }
         .btn-back {
-            display: inline-block; margin-top: 30px; padding: 14px 28px;
+            display: inline-block; padding: 14px 28px;
             background-color: var(--primary-color); color: white;
             text-decoration: none; border-radius: 8px; font-weight: bold;
             transition: 0.2s; text-align: center;
         }
         .btn-back:hover { background-color: #1d4ed8; }
+        .btn-excel {
+            display: inline-block; padding: 14px 28px;
+            background-color: #10b981; color: white;
+            text-decoration: none; border-radius: 8px; font-weight: bold;
+            transition: 0.2s; border: none; cursor: pointer; font-size: 1rem;
+        }
+        .btn-excel:hover { background-color: #059669; }
+
         .summary { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); font-size: 1.05rem; }
     </style>
 </head>
@@ -47,8 +95,42 @@
             <p style="color: #dc2626; font-weight: bold;">오류가 발생했습니다: {{ error }}</p>
         {% endif %}
 
+        <!-- [신규] 유효하지 않은 번호 경고 -->
+        {% if invalid_numbers %}
+        <details class="invalid-warning" open>
+            <summary>⚠️ 형식 오류 번호 {{ invalid_numbers|length }}건 (숫자 10자리가 아닌 값 — API 호출에서 제외됨)</summary>
+            <ul class="invalid-list">
+                {% for num in invalid_numbers %}
+                    <li>{{ num }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+
         {% if results %}
-            <div class="summary">총 <strong>{{ results|length }}</strong>건의 사업자가 조회되었습니다.</div>
+
+            <!-- [신규] 통계 바 -->
+            {% if stats %}
+            <div class="stats-bar">
+                <div class="stat-chip stat-total">
+                    총 <span class="num">{{ results|length }}</span>건
+                </div>
+                <div class="stat-chip stat-active">
+                    계속사업자 <span class="num">{{ stats.active }}</span>건
+                </div>
+                {% if stats.suspended > 0 %}
+                <div class="stat-chip stat-suspended">
+                    휴업 <span class="num">{{ stats.suspended }}</span>건
+                </div>
+                {% endif %}
+                {% if stats.closed > 0 %}
+                <div class="stat-chip stat-closed">
+                    폐업 <span class="num">{{ stats.closed }}</span>건
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
             <table>
                 <thead>
                     <tr>
@@ -59,8 +141,11 @@
                 </thead>
                 <tbody>
                     {% for business in results %}
-                        <tr {% if business.b_stt_cd in ['02', '03'] %}class="closed"{% endif %}>
-                            <td style="font-weight: 600; letter-spacing: 0.5px;">{{ business.b_no }}</td>
+                        <tr {% if business.b_stt_cd == '03' %}class="closed"
+                            {% elif business.b_stt_cd == '02' %}class="suspended"{% endif %}>
+                            <td style="font-weight: 600; letter-spacing: 0.5px; font-family: monospace;">
+                                {{ business.b_no }}
+                            </td>
                             <td>
                                 {% if business.b_stt_cd in ['02', '03'] %}
                                     <span style="font-weight:bold;">{{ business.b_stt }}</span>
@@ -73,14 +158,23 @@
                     {% endfor %}
                 </tbody>
             </table>
+
         {% else %}
             {% if not error %}
             <div class="summary">조회된 결과가 없습니다.</div>
             {% endif %}
         {% endif %}
 
-        <div style="text-align: center;">
+        <div class="button-group">
             <a href="/" class="btn-back">← 돌아가기</a>
+
+            <!-- [신규] 직접 입력 결과 엑셀 다운로드 -->
+            {% if results and b_numbers_raw %}
+            <form action="/download-direct-excel" method="post" style="margin: 0;">
+                <textarea name="business_numbers" style="display:none;">{{ b_numbers_raw }}</textarea>
+                <button type="submit" class="btn-excel">📥 엑셀 다운로드</button>
+            </form>
+            {% endif %}
         </div>
     </div>
 </body>
